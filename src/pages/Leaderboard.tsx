@@ -3,16 +3,9 @@ import { supabase } from '../lib/supabase';
 import { getAllFixtures } from '../lib/api-football';
 import { calculateUserScore } from '../lib/scoring';
 import { useAuth } from '../contexts/AuthContext';
+import { Eye, Trophy } from 'lucide-react';
 import type { Match, LeaderboardEntry } from '../types';
 import type { Prediction, ChampionPrediction } from '../types';
-
-function EyeIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-    </svg>
-  );
-}
 
 interface UserPredictionsModalProps {
   userId: string;
@@ -41,8 +34,8 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 animate-fade-in"
+      style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div
@@ -51,19 +44,19 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--bg-border)' }}>
           <div>
-            <h3 className="font-bold">Predicciones de {username}</h3>
+            <h3 className="font-bebas text-2xl tracking-[1px] text-[var(--accent-gold)]">PREDICCIONES DE {username.toUpperCase()}</h3>
             {champ && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Campeon:{' '}
-                <span style={{ color: 'var(--accent-gold)' }}>{champ.team_name}</span>
+              <p className="text-[11px] uppercase tracking-[1px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                Campeón:{' '}
+                <span className="font-bold" style={{ color: 'var(--accent-gold)' }}>{champ.team_name}</span>
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors hover:bg-white/10"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xl font-bold transition-colors hover:bg-[var(--bg-border)]"
             style={{ color: 'var(--text-muted)' }}
           >
             ×
@@ -71,14 +64,14 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
         </div>
 
         {/* Predictions list */}
-        <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-2">
+        <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-3">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="skeleton h-10 rounded-lg" />
+              <div key={i} className="skeleton h-12 rounded-lg" />
             ))
           ) : preds.length === 0 ? (
-            <p className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Sin predicciones guardadas
+            <p className="text-center py-10 font-bebas text-xl" style={{ color: 'var(--text-muted)' }}>
+              SIN PREDICCIONES GUARDADAS
             </p>
           ) : (
             preds.map(pred => {
@@ -116,18 +109,18 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
               return (
                 <div
                   key={pred.fixture_id}
-                  className="flex items-center gap-3 p-2 rounded-lg text-xs"
+                  className="flex items-center gap-3 p-3 rounded-xl text-sm border border-[var(--bg-border)]"
                   style={{ background: 'rgba(255,255,255,0.02)' }}
                 >
                   <span className="flex-1 font-medium truncate">
                     {match.teams.home.name}
                   </span>
-                  <span className="font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                    {pred.home_score}–{pred.away_score}
+                  <span className="font-mono-score font-bold px-2 py-1 rounded" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
+                    {pred.home_score} – {pred.away_score}
                   </span>
                   {isFinished && (
-                    <span className="font-bold tabular-nums text-white">
-                      {actualHome}–{actualAway}
+                    <span className="font-mono-score font-bold px-2 py-1 rounded text-black bg-[var(--text-primary)]">
+                      {actualHome} – {actualAway}
                     </span>
                   )}
                   <span className="flex-1 font-medium truncate text-right">
@@ -135,8 +128,8 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
                   </span>
                   {badge && (
                     <span
-                      className="font-bold text-xs shrink-0"
-                      style={{ color: badge.color, minWidth: '20px', textAlign: 'right' }}
+                      className="font-mono-score font-black text-sm shrink-0 ml-2"
+                      style={{ color: badge.color, minWidth: '24px', textAlign: 'right' }}
                     >
                       {badge.label}
                     </span>
@@ -230,19 +223,26 @@ export default function Leaderboard() {
 
   // Medal positions using CSS/text only
   const rankLabel = (idx: number) => {
-    if (idx === 0) return <span style={{ color: '#f5c518', fontWeight: 900 }}>1</span>;
-    if (idx === 1) return <span style={{ color: '#a1a1aa', fontWeight: 900 }}>2</span>;
-    if (idx === 2) return <span style={{ color: '#b45309', fontWeight: 900 }}>3</span>;
-    return <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{idx + 1}</span>;
+    if (idx === 0) return <span className="font-bebas text-2xl text-[var(--accent-gold)]">1</span>;
+    if (idx === 1) return <span className="font-bebas text-xl text-zinc-400">2</span>;
+    if (idx === 2) return <span className="font-bebas text-xl text-amber-700">3</span>;
+    return <span className="font-bebas text-lg text-[var(--text-muted)]">{idx + 1}</span>;
   };
 
   return (
     <main className="page pb-24 md:pb-8">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black">Tabla de Puntos</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Exacto: 3pts · Ganador+DG: 2pts · Solo ganador: 1pt · Campeon: +10pts
-        </p>
+      <div className="flex items-center gap-3.5 mb-10">
+        <div className="w-11 h-11 bg-[var(--accent-gold-dim)] border border-[rgba(201,168,76,0.3)] rounded-xl flex items-center justify-center text-[var(--accent-gold)]">
+          <Trophy size={22} />
+        </div>
+        <div>
+          <h1 className="font-bebas text-4xl tracking-[3px] text-[var(--text-primary)] leading-none">
+            LEADERBOARD
+          </h1>
+          <div className="text-xs text-[var(--text-muted)] mt-1 tracking-[0.5px]">
+            Los mejores pronosticadores del mundial
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -262,19 +262,19 @@ export default function Leaderboard() {
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="font-bold">Nadie hizo predicciones todavia</p>
+          <div className="p-16 text-center">
+            <p className="font-bebas text-2xl tracking-[1px] text-[var(--text-muted)]">NADIE HIZO PREDICCIONES TODAVÍA</p>
           </div>
         ) : (
           <table className="standings-table">
             <thead>
               <tr>
-                <th style={{ width: '40px' }}>#</th>
+                <th style={{ width: '40px', paddingLeft: '20px' }}>#</th>
                 <th style={{ textAlign: 'left' }}>Jugador</th>
                 <th title="Puntos totales" style={{ color: 'var(--accent-gold)' }}>Pts</th>
                 <th title="Exactos (3pts)" className="hidden sm:table-cell">Exactos</th>
                 <th title="% de acierto" className="hidden sm:table-cell">Acierto</th>
-                <th style={{ width: '40px' }}></th>
+                <th style={{ width: '60px' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -283,60 +283,60 @@ export default function Leaderboard() {
                 return (
                   <tr
                     key={entry.user_id}
-                    className="transition-colors"
-                    style={{ background: isCurrentUser ? 'rgba(0,210,106,0.05)' : 'transparent' }}
+                    className="transition-colors group"
+                    style={{ background: isCurrentUser ? 'var(--accent-gold-dim)' : 'transparent' }}
                   >
-                    <td>
-                      <span className="text-sm">{rankLabel(idx)}</span>
+                    <td style={{ paddingLeft: '20px' }}>
+                      {rankLabel(idx)}
                     </td>
                     <td>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <div
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-black shrink-0"
-                          style={{ background: isCurrentUser ? 'var(--accent-green)' : 'var(--bg-border)' }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-black shrink-0"
+                          style={{ background: isCurrentUser ? 'var(--accent-gold)' : 'var(--bg-border)' }}
                         >
                           {entry.username.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">
+                          <p className="text-sm font-bold truncate">
                             {entry.username}
                             {isCurrentUser && (
-                              <span className="ml-1 text-xs" style={{ color: 'var(--accent-green)' }}>
+                              <span className="ml-2 text-[10px] uppercase tracking-widest" style={{ color: 'var(--accent-gold)' }}>
                                 (vos)
                               </span>
                             )}
                           </p>
                           {entry.champion_correct && (
-                            <p className="text-xs" style={{ color: 'var(--accent-gold)' }}>
-                              Acerto el campeon
+                            <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'var(--accent-gold)' }}>
+                              Acertó el campeón
                             </p>
                           )}
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span className="font-black text-lg" style={{ color: 'var(--accent-gold)' }}>
+                      <span className="font-mono-score font-black text-xl" style={{ color: 'var(--accent-gold)' }}>
                         {entry.total_points}
                       </span>
                     </td>
                     <td className="hidden sm:table-cell">
-                      <span className="font-semibold" style={{ color: 'var(--accent-green)' }}>
+                      <span className="font-mono-score font-bold" style={{ color: 'var(--text-muted)' }}>
                         {entry.exact_results}
                       </span>
                     </td>
                     <td className="hidden sm:table-cell">
-                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <span className="font-mono-score text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                         {entry.accuracy_pct}%
                       </span>
                     </td>
                     <td>
                       <button
                         onClick={() => setSelectedUser(entry)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10 mx-auto"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors bg-[var(--bg-border)] group-hover:bg-[var(--accent-gold)] group-hover:text-black mx-auto"
                         style={{ color: 'var(--text-muted)' }}
                         title="Ver predicciones"
                       >
-                        <EyeIcon />
+                        <Eye size={16} />
                       </button>
                     </td>
                   </tr>
@@ -348,24 +348,24 @@ export default function Leaderboard() {
       </div>
 
       {/* Point system legend */}
-      <div className="mt-6 card p-4">
-        <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text-muted)' }}>
-          Sistema de puntos
+      <div className="mt-8 card p-5 border border-[var(--bg-border)]">
+        <h3 className="font-bebas tracking-[1px] text-lg mb-4 text-[var(--accent-gold)]">
+          SISTEMA DE PUNTOS
         </h3>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           {[
-            { label: 'Resultado exacto', pts: '3 pts', color: 'var(--accent-green)' },
-            { label: 'Ganador + diferencia de goles', pts: '2 pts', color: 'var(--accent-blue)' },
-            { label: 'Solo ganador o empate', pts: '1 pt', color: 'var(--accent-gold)' },
-            { label: 'Campeon correcto (bonus final)', pts: '+10 pts', color: 'var(--accent-gold)' },
+            { label: 'Resultado exacto', pts: '+3 PTS', color: 'var(--accent-green)' },
+            { label: 'Ganador + diferencia de goles', pts: '+2 PTS', color: 'var(--accent-blue)' },
+            { label: 'Solo ganador o empate', pts: '+1 PT', color: 'var(--accent-gold)' },
+            { label: 'Campeón correcto (bonus final)', pts: '+10 PTS', color: 'var(--accent-gold)' },
           ].map(({ label, pts, color }) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-2 p-2 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.03)' }}
+              className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[var(--bg-border)]"
+              style={{ background: 'rgba(255,255,255,0.01)' }}
             >
-              <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-              <span className="font-bold shrink-0" style={{ color }}>{pts}</span>
+              <span className="uppercase tracking-widest text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</span>
+              <span className="font-mono-score font-black" style={{ color }}>{pts}</span>
             </div>
           ))}
         </div>

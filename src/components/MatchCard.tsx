@@ -45,37 +45,37 @@ export function MatchCard({ match, variant = 'full', className = '' }: MatchCard
 
   if (variant === 'compact') {
     return (
-      <div className={`card p-3 flex items-center gap-3 ${className}`}>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FlagImage code={homeCode} teamName={teams.home.name} size="sm" />
-          <span className="text-sm font-medium truncate">{teams.home.name}</span>
+      <div className={`p-4 flex items-center justify-between gap-4 w-full ${className}`}>
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <FlagImage code={homeCode} logo={teams.home.logo} teamName={teams.home.name} size="sm" />
+          <span className="text-[14px] font-medium truncate">{teams.home.name}</span>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center justify-center shrink-0 min-w-[60px]">
           {hasScore ? (
-            <span className="font-bold text-base tabular-nums px-2">
+            <span className="font-mono-score text-[15px] font-semibold text-[var(--text-primary)] bg-[var(--bg-card)] px-3 py-1 rounded-md border border-[var(--bg-border)]">
               {goals.home} – {goals.away}
             </span>
           ) : (
-            <span className="text-xs text-[var(--text-muted)] px-2">
+            <span className="font-mono-score text-[13px] font-semibold text-[var(--text-muted)]">
               {format(kickoff, 'HH:mm')}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-          <span className="text-sm font-medium truncate text-right">{teams.away.name}</span>
-          <FlagImage code={awayCode} teamName={teams.away.name} size="sm" />
+        <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+          <span className="text-[14px] font-medium truncate text-right">{teams.away.name}</span>
+          <FlagImage code={awayCode} logo={teams.away.logo} teamName={teams.away.name} size="sm" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`card p-4 animate-fade-in ${className}`}>
+    <div className={`py-4 animate-fade-in border-b border-[var(--bg-border)] last:border-0 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xs text-[var(--text-muted)]">
+        <span className="text-xs text-[var(--text-muted)] tracking-wider uppercase">
           {match.league?.round ?? 'Grupo'}
           {match.league?.group ? ` — Grupo ${match.league.group.replace('Group ', '')}` : ''}
         </span>
@@ -86,17 +86,17 @@ export function MatchCard({ match, variant = 'full', className = '' }: MatchCard
       <div className="flex items-center justify-between gap-4">
         {/* Home Team */}
         <div className="flex flex-col items-center gap-2 flex-1">
-          <FlagImage code={homeCode} teamName={teams.home.name} size="lg" />
+          <FlagImage code={homeCode} logo={teams.home.logo} teamName={teams.home.name} size="md" />
           <span className="text-sm font-semibold text-center leading-tight">{teams.home.name}</span>
         </div>
 
         {/* Score */}
         <div className="flex flex-col items-center gap-1 shrink-0">
           {(isLive || isFinished) && hasScore ? (
-            <div className={`flex items-center gap-2 ${isLive ? 'animate-count-pulse' : ''}`}>
-              <span className="text-4xl font-black tabular-nums">{goals.home}</span>
-              <span className="text-2xl text-[var(--text-muted)] font-light">:</span>
-              <span className="text-4xl font-black tabular-nums">{goals.away}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl md:text-4xl font-black tabular-nums">{goals.home}</span>
+              <span className="text-xl md:text-2xl text-[var(--text-muted)] font-light">-</span>
+              <span className="text-3xl md:text-4xl font-black tabular-nums">{goals.away}</span>
             </div>
           ) : (
             <div className="text-center">
@@ -118,14 +118,14 @@ export function MatchCard({ match, variant = 'full', className = '' }: MatchCard
 
         {/* Away Team */}
         <div className="flex flex-col items-center gap-2 flex-1">
-          <FlagImage code={awayCode} teamName={teams.away.name} size="lg" />
+          <FlagImage code={awayCode} logo={teams.away.logo} teamName={teams.away.name} size="md" />
           <span className="text-sm font-semibold text-center leading-tight">{teams.away.name}</span>
         </div>
       </div>
 
       {/* Footer */}
       {!isLive && !isFinished && (
-        <p className="text-xs text-[var(--text-muted)] text-center mt-3 capitalize">{dateStr}</p>
+        <p className="text-xs text-[var(--text-muted)] text-center mt-4 capitalize">{dateStr}</p>
       )}
       {fixture.venue?.city && (
         <p className="text-xs text-[var(--text-muted)] text-center mt-1">{fixture.venue.city}</p>
