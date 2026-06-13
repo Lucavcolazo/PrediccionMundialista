@@ -7,6 +7,15 @@ import { usePredictions } from '../hooks/usePredictions';
 import { WC2026_TEAMS } from '../types';
 import type { Match } from '../types';
 
+// Lock icon SVG
+function LockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  );
+}
+
 // ============================================================
 // Single match prediction row
 // ============================================================
@@ -50,7 +59,7 @@ function PredictionRow({ match, savedHome, savedAway, onSave, saving }: Predicti
   };
 
   const kickoff = new Date(fixture.date);
-  const dateStr = format(kickoff, "EEE d MMM • HH:mm", { locale: es });
+  const dateStr = format(kickoff, "EEE d MMM, HH:mm", { locale: es });
   const hasPrediction = savedHome !== undefined && savedAway !== undefined;
 
   return (
@@ -73,9 +82,7 @@ function PredictionRow({ match, savedHome, savedAway, onSave, saving }: Predicti
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isLocked && (
-            <span className="text-sm" title="Partido bloqueado">🔒</span>
-          )}
+          {isLocked && <LockIcon />}
           {isLive && (
             <span className="badge badge-live text-xs animate-pulse-live">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-green)]" />
@@ -83,7 +90,9 @@ function PredictionRow({ match, savedHome, savedAway, onSave, saving }: Predicti
             </span>
           )}
           {isFinished && <span className="badge badge-finished text-xs">FT</span>}
-          {!isLocked && <span className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{dateStr}</span>}
+          {!isLocked && (
+            <span className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{dateStr}</span>
+          )}
         </div>
       </div>
 
@@ -99,9 +108,12 @@ function PredictionRow({ match, savedHome, savedAway, onSave, saving }: Predicti
         <div className="flex items-center gap-2 shrink-0">
           {isLocked ? (
             <div className="flex items-center gap-2">
-              {/* Prediction (faded) */}
+              {/* User's prediction (faded) */}
               {hasPrediction && (
-                <span className="text-sm tabular-nums px-2 rounded" style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
+                <span
+                  className="text-sm tabular-nums px-2 rounded"
+                  style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}
+                >
                   {savedHome}–{savedAway}
                 </span>
               )}
@@ -112,7 +124,10 @@ function PredictionRow({ match, savedHome, savedAway, onSave, saving }: Predicti
                 </span>
               )}
               {isLive && (
-                <span className="text-lg font-bold tabular-nums px-2 animate-count-pulse" style={{ color: 'var(--accent-green)' }}>
+                <span
+                  className="text-lg font-bold tabular-nums px-2 animate-count-pulse"
+                  style={{ color: 'var(--accent-green)' }}
+                >
                   {goals.home}–{goals.away}
                 </span>
               )}
@@ -164,7 +179,7 @@ function PredictionRow({ match, savedHome, savedAway, onSave, saving }: Predicti
             onClick={handleSave}
             disabled={localSaving || saving || home === '' || away === ''}
           >
-            {saved ? '✓ Guardado' : localSaving ? '...' : hasPrediction ? 'Actualizar' : 'Guardar'}
+            {saved ? 'Guardado' : localSaving ? 'Guardando...' : hasPrediction ? 'Actualizar' : 'Guardar'}
           </button>
         </div>
       )}
@@ -206,14 +221,26 @@ function ChampionPicker({ current, onSave, saving }: ChampionPickerProps) {
   return (
     <div
       className="card p-5"
-      style={{ borderColor: 'rgba(245,197,24,0.2)', background: 'linear-gradient(135deg, #1a1a10 0%, var(--bg-card) 60%)' }}
+      style={{
+        borderColor: 'rgba(245,197,24,0.2)',
+        background: 'linear-gradient(135deg, #1a1a10 0%, var(--bg-card) 60%)',
+      }}
     >
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-2xl">🏆</span>
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.2)' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c518" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="8"/>
+            <path d="M6 8H4a2 2 0 0 1-2-2V4h4"/><path d="M18 8h2a2 2 0 0 0 2-2V4h-4"/>
+            <rect x="6" y="4" width="12" height="8" rx="1"/>
+          </svg>
+        </div>
         <div>
-          <h3 className="font-bold">¿Quién va a salir campeón?</h3>
+          <h3 className="font-bold">Campeon del Mundial</h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            +10 puntos si acertás al ganador del Mundial
+            +10 puntos si acertas al ganador
           </p>
         </div>
       </div>
@@ -233,7 +260,7 @@ function ChampionPicker({ current, onSave, saving }: ChampionPickerProps) {
           value={selected}
           onChange={e => setSelected(e.target.value)}
         >
-          <option value="">— Seleccioná un país —</option>
+          <option value="">Selecciona un pais</option>
           {WC2026_TEAMS.sort((a, b) => a.name.localeCompare(b.name)).map(t => (
             <option key={t.code} value={t.code}>{t.name}</option>
           ))}
@@ -242,7 +269,10 @@ function ChampionPicker({ current, onSave, saving }: ChampionPickerProps) {
 
       {current && (
         <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-          Predicción actual: <span className="font-semibold" style={{ color: 'var(--accent-gold)' }}>{current.team_name}</span>
+          Prediccion actual:{' '}
+          <span className="font-semibold" style={{ color: 'var(--accent-gold)' }}>
+            {current.team_name}
+          </span>
         </p>
       )}
 
@@ -252,7 +282,7 @@ function ChampionPicker({ current, onSave, saving }: ChampionPickerProps) {
         onClick={handleSave}
         disabled={!selected || localSaving || saving}
       >
-        {saved ? '✓ Guardado' : localSaving ? '...' : current ? 'Actualizar campeón' : 'Guardar campeón'}
+        {saved ? 'Guardado' : localSaving ? 'Guardando...' : current ? 'Actualizar campeon' : 'Guardar campeon'}
       </button>
     </div>
   );
@@ -273,7 +303,6 @@ export default function Predictions() {
   useEffect(() => {
     getAllFixtures()
       .then(all => {
-        // Sort by date
         const sorted = [...all].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
         setFixtures(sorted);
         setLoading(false);
@@ -302,9 +331,9 @@ export default function Predictions() {
   return (
     <main className="page pb-24 md:pb-8">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black">✏️ Mis Predicciones</h1>
+        <h1 className="text-2xl md:text-3xl font-black">Mis Predicciones</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Predecí los partidos antes del pitazo inicial
+          Predeci los partidos antes del pitazo inicial
         </p>
       </div>
 
@@ -325,15 +354,17 @@ export default function Predictions() {
       )}
 
       {error && (
-        <div className="rounded-xl p-4 mb-6 text-sm"
-          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
-          ⚠️ {error}
+        <div
+          className="rounded-xl p-4 mb-6 text-sm"
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
+        >
+          Error: {error}
         </div>
       )}
 
       {/* Round filter */}
       {!loading && rounds.length > 2 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
           {rounds.map(r => (
             <button
               key={r}
@@ -367,7 +398,6 @@ export default function Predictions() {
         </div>
       ) : filteredFixtures.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="text-4xl mb-3">📋</p>
           <p className="font-bold">No hay partidos en este filtro</p>
         </div>
       ) : (

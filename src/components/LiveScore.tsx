@@ -20,7 +20,7 @@ export function LiveScore({ match }: LiveScoreProps) {
         boxShadow: '0 0 40px rgba(0, 210, 106, 0.15)',
       }}
     >
-      {/* Live glow background */}
+      {/* Background glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -32,7 +32,7 @@ export function LiveScore({ match }: LiveScoreProps) {
       <div className="flex items-center justify-center mb-5">
         <span className="badge badge-live animate-pulse-live text-sm px-4 py-1">
           <span className="w-2 h-2 rounded-full bg-[var(--accent-green)] inline-block animate-pulse" />
-          EN VIVO • {fixture.status.elapsed}'
+          EN VIVO — {fixture.status.elapsed}'
         </span>
       </div>
 
@@ -86,7 +86,7 @@ export function LiveScore({ match }: LiveScoreProps) {
       {/* Venue */}
       {fixture.venue?.name && (
         <p className="text-xs text-[var(--text-muted)] text-center mt-5">
-          📍 {fixture.venue.name}, {fixture.venue.city}
+          {fixture.venue.name}, {fixture.venue.city}
         </p>
       )}
     </div>

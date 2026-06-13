@@ -5,6 +5,27 @@ import { getStandings, getAllFixtures, getIsoCode } from '../lib/api-football';
 import { FlagImage } from '../components/FlagImage';
 import type { StandingGroup, Match } from '../types';
 
+function ChevronDown({ rotated }: { rotated: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        transition: 'transform 0.2s ease',
+        transform: rotated ? 'rotate(180deg)' : 'rotate(0deg)',
+      }}
+    >
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  );
+}
+
 function GroupTable({ group }: { group: StandingGroup }) {
   const [expanded, setExpanded] = useState(false);
   const letter = group.group.replace('Group ', '');
@@ -26,15 +47,8 @@ function GroupTable({ group }: { group: StandingGroup }) {
           </span>
           <span className="font-bold">Grupo {letter}</span>
         </div>
-        <span
-          className="text-xs transition-transform duration-200"
-          style={{
-            color: 'var(--text-muted)',
-            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-            display: 'inline-block',
-          }}
-        >
-          ▼
+        <span style={{ color: 'var(--text-muted)' }}>
+          <ChevronDown rotated={expanded} />
         </span>
       </div>
 
@@ -59,7 +73,7 @@ function GroupTable({ group }: { group: StandingGroup }) {
             const isoCode = getIsoCode(s.team.code);
             const isQualify = s.rank <= 2;
             return (
-              <tr key={s.team.id} style={{ opacity: 1 }}>
+              <tr key={s.team.id}>
                 <td>
                   <span
                     className="w-5 h-5 rounded-sm flex items-center justify-center text-xs font-bold mx-auto"
@@ -103,12 +117,13 @@ function GroupTable({ group }: { group: StandingGroup }) {
       {!expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="w-full py-2.5 text-xs font-medium text-center transition-colors"
+          className="w-full py-2.5 text-xs font-medium text-center transition-colors flex items-center justify-center gap-1.5"
           style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--bg-border)' }}
           onMouseOver={e => (e.currentTarget.style.color = 'var(--accent-green)')}
           onMouseOut={e => (e.currentTarget.style.color = 'var(--text-muted)')}
         >
-          Ver fixtures del grupo ▼
+          Ver fixtures del grupo
+          <ChevronDown rotated={false} />
         </button>
       )}
     </div>
@@ -215,7 +230,7 @@ export default function Groups() {
   return (
     <main className="page pb-24 md:pb-8">
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-black">📊 Grupos & Standings</h1>
+        <h1 className="text-2xl md:text-3xl font-black">Grupos y Standings</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
           Las 2 primeras selecciones clasifican a octavos
         </p>
@@ -226,7 +241,7 @@ export default function Groups() {
           className="rounded-xl p-4 mb-6 text-sm"
           style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
         >
-          ⚠️ {error}
+          Error: {error}
         </div>
       )}
 
@@ -236,10 +251,9 @@ export default function Groups() {
           : groups.length === 0
           ? (
             <div className="col-span-full card p-12 text-center">
-              <p className="text-4xl mb-3">📋</p>
               <p className="font-bold text-lg">Standings no disponibles</p>
               <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
-                Los grupos se publicarán cuando comience el torneo
+                Los grupos se publicaran cuando comience el torneo
               </p>
             </div>
           )

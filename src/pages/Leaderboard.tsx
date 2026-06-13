@@ -6,6 +6,14 @@ import { useAuth } from '../contexts/AuthContext';
 import type { Match, LeaderboardEntry } from '../types';
 import type { Prediction, ChampionPrediction } from '../types';
 
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+}
+
 interface UserPredictionsModalProps {
   userId: string;
   username: string;
@@ -48,16 +56,17 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
             <h3 className="font-bold">Predicciones de {username}</h3>
             {champ && (
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Campeón: <span style={{ color: 'var(--accent-gold)' }}>{champ.team_name}</span>
+                Campeon:{' '}
+                <span style={{ color: 'var(--accent-gold)' }}>{champ.team_name}</span>
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors hover:bg-white/10"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors hover:bg-white/10"
             style={{ color: 'var(--text-muted)' }}
           >
-            ✕
+            ×
           </button>
         </div>
 
@@ -125,7 +134,10 @@ function UserPredictionsModal({ userId, username, fixtures, onClose }: UserPredi
                     {match.teams.away.name}
                   </span>
                   {badge && (
-                    <span className="font-bold text-xs shrink-0" style={{ color: badge.color, minWidth: '20px', textAlign: 'right' }}>
+                    <span
+                      className="font-bold text-xs shrink-0"
+                      style={{ color: badge.color, minWidth: '20px', textAlign: 'right' }}
+                    >
                       {badge.label}
                     </span>
                   )}
@@ -154,7 +166,6 @@ export default function Leaderboard() {
   useEffect(() => {
     async function load() {
       try {
-        // Fetch fixtures and all predictions + profiles in parallel
         const [allFixtures, profilesRes, predsRes, champRes] = await Promise.all([
           getAllFixtures(),
           supabase.from('profiles').select('*'),
@@ -168,15 +179,12 @@ export default function Leaderboard() {
         const allPreds = predsRes.data ?? [];
         const allChamp = champRes.data ?? [];
 
-        // Finished matches
         const finished = allFixtures.filter(m =>
           ['FT', 'AET', 'PEN'].includes(m.fixture.status.short)
         );
 
-        // Calculate champion (this is a placeholder — actual champion unknown until final)
-        const actualChampion: string | null = null; // Set when tournament ends
+        const actualChampion: string | null = null;
 
-        // Score per user
         const leaderboard: LeaderboardEntry[] = profiles.map(profile => {
           const userPreds = allPreds.filter(p => p.user_id === profile.id);
           const userChamp = allChamp.find(c => c.user_id === profile.id);
@@ -208,7 +216,6 @@ export default function Leaderboard() {
           };
         });
 
-        // Sort by points
         leaderboard.sort((a, b) => b.total_points - a.total_points);
         setEntries(leaderboard);
         setLoading(false);
@@ -221,21 +228,29 @@ export default function Leaderboard() {
     load();
   }, []);
 
-  const medalMap: Record<number, string> = { 0: '🥇', 1: '🥈', 2: '🥉' };
+  // Medal positions using CSS/text only
+  const rankLabel = (idx: number) => {
+    if (idx === 0) return <span style={{ color: '#f5c518', fontWeight: 900 }}>1</span>;
+    if (idx === 1) return <span style={{ color: '#a1a1aa', fontWeight: 900 }}>2</span>;
+    if (idx === 2) return <span style={{ color: '#b45309', fontWeight: 900 }}>3</span>;
+    return <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{idx + 1}</span>;
+  };
 
   return (
     <main className="page pb-24 md:pb-8">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black">🏆 Tabla de Puntos</h1>
+        <h1 className="text-2xl md:text-3xl font-black">Tabla de Puntos</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Exacto: 3pts · Ganador+DG: 2pts · Solo ganador: 1pt · Campeón: +10pts
+          Exacto: 3pts · Ganador+DG: 2pts · Solo ganador: 1pt · Campeon: +10pts
         </p>
       </div>
 
       {error && (
-        <div className="rounded-xl p-4 mb-6 text-sm"
-          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
-          ⚠️ {error}
+        <div
+          className="rounded-xl p-4 mb-6 text-sm"
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
+        >
+          Error: {error}
         </div>
       )}
 
@@ -248,8 +263,7 @@ export default function Leaderboard() {
           </div>
         ) : entries.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-4xl mb-3">👀</p>
-            <p className="font-bold">Nadie hizo predicciones todavía</p>
+            <p className="font-bold">Nadie hizo predicciones todavia</p>
           </div>
         ) : (
           <table className="standings-table">
@@ -260,7 +274,7 @@ export default function Leaderboard() {
                 <th title="Puntos totales" style={{ color: 'var(--accent-gold)' }}>Pts</th>
                 <th title="Exactos (3pts)" className="hidden sm:table-cell">Exactos</th>
                 <th title="% de acierto" className="hidden sm:table-cell">Acierto</th>
-                <th title="Ver predicciones" style={{ width: '40px' }}></th>
+                <th style={{ width: '40px' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -270,18 +284,10 @@ export default function Leaderboard() {
                   <tr
                     key={entry.user_id}
                     className="transition-colors"
-                    style={{
-                      background: isCurrentUser ? 'rgba(0,210,106,0.05)' : 'transparent',
-                    }}
+                    style={{ background: isCurrentUser ? 'rgba(0,210,106,0.05)' : 'transparent' }}
                   >
                     <td>
-                      <span className="text-base">
-                        {medalMap[idx] ?? (
-                          <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
-                            {idx + 1}
-                          </span>
-                        )}
-                      </span>
+                      <span className="text-sm">{rankLabel(idx)}</span>
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
@@ -302,7 +308,7 @@ export default function Leaderboard() {
                           </p>
                           {entry.champion_correct && (
                             <p className="text-xs" style={{ color: 'var(--accent-gold)' }}>
-                              🏆 Acertó el campeón
+                              Acerto el campeon
                             </p>
                           )}
                         </div>
@@ -326,11 +332,11 @@ export default function Leaderboard() {
                     <td>
                       <button
                         onClick={() => setSelectedUser(entry)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10 mx-auto"
                         style={{ color: 'var(--text-muted)' }}
                         title="Ver predicciones"
                       >
-                        👁
+                        <EyeIcon />
                       </button>
                     </td>
                   </tr>
@@ -343,16 +349,21 @@ export default function Leaderboard() {
 
       {/* Point system legend */}
       <div className="mt-6 card p-4">
-        <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text-muted)' }}>Sistema de puntos</h3>
+        <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text-muted)' }}>
+          Sistema de puntos
+        </h3>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {[
             { label: 'Resultado exacto', pts: '3 pts', color: 'var(--accent-green)' },
             { label: 'Ganador + diferencia de goles', pts: '2 pts', color: 'var(--accent-blue)' },
-            { label: 'Solo ganador / empate', pts: '1 pt', color: 'var(--accent-gold)' },
-            { label: 'Campeón correcto (bonus final)', pts: '+10 pts', color: 'var(--accent-gold)' },
+            { label: 'Solo ganador o empate', pts: '1 pt', color: 'var(--accent-gold)' },
+            { label: 'Campeon correcto (bonus final)', pts: '+10 pts', color: 'var(--accent-gold)' },
           ].map(({ label, pts, color }) => (
-            <div key={label} className="flex items-center justify-between gap-2 p-2 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div
+              key={label}
+              className="flex items-center justify-between gap-2 p-2 rounded-lg"
+              style={{ background: 'rgba(255,255,255,0.03)' }}
+            >
               <span style={{ color: 'var(--text-muted)' }}>{label}</span>
               <span className="font-bold shrink-0" style={{ color }}>{pts}</span>
             </div>

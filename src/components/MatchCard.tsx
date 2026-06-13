@@ -28,7 +28,7 @@ function StatusBadge({ status }: { status: Match['fixture']['status'] }) {
     return <span className="badge badge-finished">FT</span>;
   }
 
-  return <span className="badge badge-upcoming">Próximo</span>;
+  return <span className="badge badge-upcoming">Proximo</span>;
 }
 
 export function MatchCard({ match, variant = 'full', className = '' }: MatchCardProps) {
@@ -128,7 +128,7 @@ export function MatchCard({ match, variant = 'full', className = '' }: MatchCard
         <p className="text-xs text-[var(--text-muted)] text-center mt-3 capitalize">{dateStr}</p>
       )}
       {fixture.venue?.city && (
-        <p className="text-xs text-[var(--text-muted)] text-center mt-1">📍 {fixture.venue.city}</p>
+        <p className="text-xs text-[var(--text-muted)] text-center mt-1">{fixture.venue.city}</p>
       )}
     </div>
   );
