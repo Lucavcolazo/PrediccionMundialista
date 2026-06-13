@@ -113,6 +113,17 @@ export interface ChampionPrediction {
   created_at: string;
 }
 
+export interface GroupPrediction {
+  id: string;
+  user_id: string;
+  group_name: string;
+  first_place_code: string;
+  second_place_code: string;
+  third_place_code: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   username: string;

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { getLiveMatches, getUpcomingMatches, getTodayResults } from '../lib/api-football';
+import { getLiveMatches, getUpcomingMatches, getTodayMatches } from '../lib/api-football';
 import type { Match } from '../types';
 
-const POLL_INTERVAL = 60_000; // 60 seconds
+const POLL_INTERVAL = 120_000; // 2 min — data is refreshed server-side every ~10 min
 
 export function useLiveMatches() {
   const [liveMatches, setLiveMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [todayResults, setTodayResults] = useState<Match[]>([]);
+  const [todayMatches, setTodayMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -17,12 +17,11 @@ export function useLiveMatches() {
       const [live, upcoming, today] = await Promise.all([
         getLiveMatches(),
         getUpcomingMatches(3),
-        getTodayResults(),
+        getTodayMatches(),
       ]);
       setLiveMatches(live);
       setUpcomingMatches(upcoming);
-      // Filter today results to only finished matches
-      setTodayResults(today.filter(m => m.fixture.status.short === 'FT' || m.fixture.status.short === 'AET' || m.fixture.status.short === 'PEN'));
+      setTodayMatches(today);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch matches');
@@ -39,5 +38,5 @@ export function useLiveMatches() {
     };
   }, []);
 
-  return { liveMatches, upcomingMatches, todayResults, loading, error, refetch: fetchAll };
+  return { liveMatches, upcomingMatches, todayMatches, loading, error, refetch: fetchAll };
 }

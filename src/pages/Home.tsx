@@ -1,150 +1,175 @@
 import { useLiveMatches } from '../hooks/useLiveMatches';
 import { LiveScore } from '../components/LiveScore';
-import { MatchCard } from '../components/MatchCard';
-import { CountdownTimer } from '../components/CountdownTimer';
+import { FlagImage } from '../components/FlagImage';
+import { getIsoCode } from '../lib/api-football';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { es } from 'date-fns/locale';
+import type { Match } from '../types';
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="mb-4">
-      <h2 className="text-xl font-bold">{title}</h2>
-      {subtitle && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
+    <h2 className="text-[11px] font-bold tracking-[2px] uppercase mb-4" style={{ color: 'var(--text-muted)' }}>
+      {title}
+    </h2>
+  );
+}
+
+function UpcomingCard({ match }: { match: Match }) {
+  const homeCode = getIsoCode(match.teams.home.code);
+  const awayCode = getIsoCode(match.teams.away.code);
+  
+  const groupInfo = match.league?.group ? `Grupo ${match.league.group.replace('Group ', '')}` : '';
+  const venueInfo = match.fixture.venue?.name || '';
+  const details = [groupInfo, venueInfo].filter(Boolean).join(' · ');
+
+  // Calculate time remaining like "1h 23m"
+  const date = new Date(match.fixture.date);
+  // Custom format since date-fns formatDistanceToNowStrict returns things like "1 hour"
+  let timeStr = formatDistanceToNowStrict(date, { locale: es });
+  // Map "1 hour", "2 hours" to "1h", "2h", "minutes" to "m"
+  timeStr = timeStr.replace(/ horas?/, 'h').replace(/ minutos?/, 'm').replace(/ días?/, 'd').replace(/ segundos?/, 's');
+
+  return (
+    <div className="flex items-center justify-between p-5 rounded-xl border mb-4 bg-[var(--bg-card)] border-[var(--bg-border)]">
+      <div className="flex items-center gap-5">
+        <div className="flex -space-x-3">
+          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[var(--bg-card)] shrink-0 z-10 bg-[var(--bg-base)] flex items-center justify-center">
+            <FlagImage code={homeCode} logo={match.teams.home.logo} teamName={match.teams.home.name} size="sm" />
+          </div>
+          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[var(--bg-card)] shrink-0 z-20 bg-[var(--bg-base)] flex items-center justify-center">
+            <FlagImage code={awayCode} logo={match.teams.away.logo} teamName={match.teams.away.name} size="sm" />
+          </div>
+        </div>
+        <div>
+          <h4 className="font-bold text-[var(--text-primary)] text-[15px]">{match.teams.home.name} vs {match.teams.away.name}</h4>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">{details}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-bold text-[17px] tracking-tight text-[var(--accent-gold)]">{timeStr}</div>
+        <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">arg</div>
+      </div>
     </div>
   );
 }
 
-function SkeletonCard() {
+function ResultRow({ match, isLast }: { match: Match; isLast: boolean }) {
+  const homeCode = getIsoCode(match.teams.home.code);
+  const awayCode = getIsoCode(match.teams.away.code);
+  const groupName = match.league?.group ? `Gr. ${match.league.group.replace('Group ', '')}` : '';
+
+  // Determine winners to highlight name
+  const hg = match.goals.home ?? 0;
+  const ag = match.goals.away ?? 0;
+  const homeWon = hg > ag;
+  const awayWon = ag > hg;
+
   return (
-    <div className="card p-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="skeleton h-4 w-24 rounded" />
-        <div className="skeleton h-5 w-14 rounded-full" />
+    <div className={`flex items-center justify-between py-4 px-6 ${!isLast ? 'border-b border-[var(--bg-border)]' : ''}`}>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-4">
+          <div className="w-6 h-6 rounded-full overflow-hidden border border-[var(--bg-border)] flex items-center justify-center shrink-0">
+            <FlagImage code={homeCode} logo={match.teams.home.logo} teamName={match.teams.home.name} size="sm" />
+          </div>
+          <span className={`text-[15px] ${homeWon ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)] font-medium'}`}>
+            {match.teams.home.name}
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="w-6 h-6 rounded-full overflow-hidden border border-[var(--bg-border)] flex items-center justify-center shrink-0">
+            <FlagImage code={awayCode} logo={match.teams.away.logo} teamName={match.teams.away.name} size="sm" />
+          </div>
+          <span className={`text-[15px] ${awayWon ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)] font-medium'}`}>
+            {match.teams.away.name}
+          </span>
+        </div>
       </div>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-col items-center gap-2 flex-1">
-          <div className="skeleton w-14 h-11 rounded" />
-          <div className="skeleton h-4 w-20 rounded" />
+
+      <div className="flex items-center gap-8">
+        <div className="flex flex-col gap-3 items-end">
+          <span className={`text-lg leading-none ${homeWon ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)] font-semibold'}`}>
+            {match.goals.home}
+          </span>
+          <span className={`text-lg leading-none ${awayWon ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)] font-semibold'}`}>
+            {match.goals.away}
+          </span>
         </div>
-        <div className="skeleton h-10 w-20 rounded" />
-        <div className="flex flex-col items-center gap-2 flex-1">
-          <div className="skeleton w-14 h-11 rounded" />
-          <div className="skeleton h-4 w-20 rounded" />
-        </div>
+        <span className="text-xs font-medium text-[var(--text-muted)] w-8 text-right">
+          {groupName}
+        </span>
       </div>
     </div>
   );
 }
 
 export default function Home() {
-  const { liveMatches, upcomingMatches, todayResults, loading, error } = useLiveMatches();
-  const hasLive = liveMatches.length > 0;
+  const { liveMatches, todayMatches, loading, error } = useLiveMatches();
+
+  const finishedToday = todayMatches.filter(m => ['FT', 'AET', 'PEN'].includes(m.fixture.status.short));
+  const upcomingToday = todayMatches.filter(m => m.fixture.status.short === 'NS');
 
   return (
-    <main className="page pb-24 md:pb-8">
-      {/* Hero */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'var(--accent-green-dim)', border: '1px solid rgba(0,210,106,0.2)' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d26a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="8"/>
-              <path d="M6 8H4a2 2 0 0 1-2-2V4h4"/><path d="M18 8h2a2 2 0 0 0 2-2V4h-4"/>
-              <rect x="6" y="4" width="12" height="8" rx="1"/>
-            </svg>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black">
-            FIFA World Cup 2026
-          </h1>
-        </div>
-        <p style={{ color: 'var(--text-muted)' }} className="text-sm ml-13">
-          Horario Argentina (UTC−3)
-        </p>
-      </div>
-
+    <main className="page max-w-[1000px] mx-auto pt-6 pb-12 px-4 lg:px-0">
+      
       {error && (
-        <div
-          className="rounded-xl p-4 mb-6 text-sm"
-          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
-        >
+        <div className="rounded-xl p-4 mb-6 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
           Error al cargar partidos: {error}
         </div>
       )}
 
-      {/* Live Section */}
       {loading ? (
-        <div className="mb-8">
-          <SectionHeader title="En Vivo" />
-          <SkeletonCard />
-        </div>
-      ) : hasLive ? (
-        <section className="mb-8">
-          <SectionHeader
-            title="En Vivo"
-            subtitle={`${liveMatches.length} partido${liveMatches.length > 1 ? 's' : ''} en curso`}
-          />
-          <div className="flex flex-col gap-4">
-            {liveMatches.map(match => (
-              <LiveScore key={match.fixture.id} match={match} />
-            ))}
-          </div>
-        </section>
+        <div className="w-full h-40 skeleton rounded-2xl mb-8" />
       ) : (
-        /* Upcoming Section */
-        <section className="mb-8">
-          <SectionHeader title="Proximos Partidos" subtitle="Cuenta regresiva al proximo pitazo" />
-          {upcomingMatches.length === 0 ? (
-            <div
-              className="card p-8 text-center"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <p className="font-semibold">No hay partidos programados</p>
-              <p className="text-sm mt-1">El Mundial todavia no tiene fixtures publicados</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {upcomingMatches.map((match, idx) => (
-                <div
-                  key={match.fixture.id}
-                  className="card p-4 animate-fade-in"
-                  style={{ animationDelay: `${idx * 0.08}s`, animationFillMode: 'both' }}
-                >
-                  {idx === 0 && (
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
-                        Siguiente partido
-                      </span>
-                      <CountdownTimer targetDate={match.fixture.date} />
-                    </div>
-                  )}
-                  <MatchCard match={match} variant={idx === 0 ? 'full' : 'compact'} />
-                </div>
-              ))}
-            </div>
+        <>
+          {/* Top: Live Match */}
+          {liveMatches.length > 0 && (
+            <section className="mb-12">
+              <SectionHeader title="En Vivo" />
+              <div className="flex flex-col gap-4">
+                {liveMatches.map(match => (
+                  <LiveScore key={match.fixture.id} match={match} />
+                ))}
+              </div>
+            </section>
           )}
-        </section>
-      )}
 
-      {/* Today's Results */}
-      {(loading || todayResults.length > 0) && (
-        <section>
-          <SectionHeader title="Resultados de Hoy" />
-          {loading ? (
-            <div className="flex flex-col gap-3">
-              {[1, 2].map(i => <SkeletonCard key={i} />)}
-            </div>
-          ) : todayResults.length === 0 ? (
-            <div className="card p-6 text-center" style={{ color: 'var(--text-muted)' }}>
-              <p className="text-sm">No hubo partidos hoy</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {todayResults.map(match => (
-                <MatchCard key={match.fixture.id} match={match} variant="compact" />
-              ))}
-            </div>
-          )}
-        </section>
+          {/* 2-Column Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            
+            {/* Left Column: Upcoming */}
+            <section>
+              <SectionHeader title="Próximos Partidos" />
+              {upcomingToday.length === 0 ? (
+                <div className="card p-6 text-center border-dashed" style={{ borderColor: 'var(--bg-border)', color: 'var(--text-muted)' }}>
+                  <p className="text-sm font-medium">No hay más partidos en la jornada</p>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {upcomingToday.map(match => (
+                    <UpcomingCard key={match.fixture.id} match={match} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Right Column: Results */}
+            <section>
+              <SectionHeader title="Resultados de Hoy" />
+              {finishedToday.length === 0 ? (
+                <div className="card p-6 text-center border-dashed" style={{ borderColor: 'var(--bg-border)', color: 'var(--text-muted)' }}>
+                  <p className="text-sm font-medium">Sin resultados previos hoy</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-[var(--bg-card)] overflow-hidden" style={{ borderColor: 'var(--bg-border)' }}>
+                  {finishedToday.map((match, idx) => (
+                    <ResultRow key={match.fixture.id} match={match} isLast={idx === finishedToday.length - 1} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+          </div>
+        </>
       )}
     </main>
   );

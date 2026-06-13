@@ -26,14 +26,13 @@ function calcTimeLeft(targetDate: string): TimeLeft | null {
 
 function Pad({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
+    <div className="flex flex-col items-center">
       <span
-        className="text-2xl font-black tabular-nums leading-none"
-        style={{ color: 'var(--accent-green)' }}
+        className="font-mono-score text-xl font-semibold text-[var(--accent-gold)] bg-[var(--accent-gold-dim)] border border-[rgba(201,168,76,0.2)] rounded-lg px-2.5 py-1.5 min-w-[44px] text-center"
       >
         {String(value).padStart(2, '0')}
       </span>
-      <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">{label}</span>
+      <span className="text-[9px] uppercase tracking-[1px] text-[var(--text-muted)] mt-1">{label}</span>
     </div>
   );
 }
@@ -50,20 +49,20 @@ export function CountdownTimer({ targetDate, className = '' }: CountdownTimerPro
 
   if (!timeLeft) {
     return (
-      <span className="text-sm font-semibold" style={{ color: 'var(--accent-green)' }}>
+      <span className="text-sm font-semibold" style={{ color: 'var(--accent-gold)' }}>
         ¡Iniciando!
       </span>
     );
   }
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex justify-center gap-2 mt-2.5 ${className}`}>
       {timeLeft.days > 0 && <Pad value={timeLeft.days} label="días" />}
-      {timeLeft.days > 0 && <span className="text-xl font-light text-[var(--text-muted)] mb-2">:</span>}
+      {timeLeft.days > 0 && <span className="font-mono-score text-lg text-[var(--accent-gold)] pt-1.5">:</span>}
       <Pad value={timeLeft.hours} label="hs" />
-      <span className="text-xl font-light text-[var(--text-muted)] mb-2">:</span>
+      <span className="font-mono-score text-lg text-[var(--accent-gold)] pt-1.5">:</span>
       <Pad value={timeLeft.minutes} label="min" />
-      <span className="text-xl font-light text-[var(--text-muted)] mb-2">:</span>
+      <span className="font-mono-score text-lg text-[var(--accent-gold)] pt-1.5">:</span>
       <Pad value={timeLeft.seconds} label="seg" />
     </div>
   );

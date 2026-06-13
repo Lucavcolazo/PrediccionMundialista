@@ -1,188 +1,129 @@
-import { useEffect, useState, useCallback } from 'react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { getAllFixtures, getIsoCode } from '../lib/api-football';
+import { useEffect, useState, useMemo } from 'react';
+import { getStandings, getIsoCode } from '../lib/api-football';
 import { FlagImage } from '../components/FlagImage';
 import { usePredictions } from '../hooks/usePredictions';
 import { WC2026_TEAMS } from '../types';
-import type { Match } from '../types';
-
-// Lock icon SVG
-function LockIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-    </svg>
-  );
-}
+import { generateBracketNodes } from '../lib/simulator';
+import { Bracket } from '../components/Bracket';
+import { Edit3, Trophy, CheckCircle2 } from 'lucide-react';
+import type { StandingGroup, GroupPrediction } from '../types';
 
 // ============================================================
-// Single match prediction row
+// Group Prediction Card
 // ============================================================
 
-interface PredictionRowProps {
-  match: Match;
-  savedHome?: number;
-  savedAway?: number;
-  onSave: (fixtureId: number, h: number, a: number) => Promise<void>;
+interface GroupPredictionCardProps {
+  group: StandingGroup;
+  prediction?: GroupPrediction;
+  onSave: (groupName: string, first: string, second: string, third: string | null) => Promise<{ error: string | null }>;
   saving: boolean;
 }
 
-function PredictionRow({ match, savedHome, savedAway, onSave, saving }: PredictionRowProps) {
-  const { fixture, teams, goals } = match;
-  const homeCode = getIsoCode(teams.home.code);
-  const awayCode = getIsoCode(teams.away.code);
-  const isLocked = new Date(fixture.date).getTime() <= Date.now();
-  const isFinished = ['FT', 'AET', 'PEN'].includes(fixture.status.short);
-  const isLive = ['1H', 'HT', '2H', 'ET', 'LIVE'].includes(fixture.status.short);
-
-  const [home, setHome] = useState<string>(savedHome !== undefined ? String(savedHome) : '');
-  const [away, setAway] = useState<string>(savedAway !== undefined ? String(savedAway) : '');
-  const [saved, setSaved] = useState(false);
+function GroupPredictionCard({ group, prediction, onSave, saving }: GroupPredictionCardProps) {
+  const [first, setFirst] = useState<string | null>(prediction?.first_place_code || null);
+  const [second, setSecond] = useState<string | null>(prediction?.second_place_code || null);
+  const [third, setThird] = useState<string | null>(prediction?.third_place_code || null);
   const [localSaving, setLocalSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  // Sync with saved values
   useEffect(() => {
-    if (savedHome !== undefined) setHome(String(savedHome));
-    if (savedAway !== undefined) setAway(String(savedAway));
-  }, [savedHome, savedAway]);
+    setFirst(prediction?.first_place_code || null);
+    setSecond(prediction?.second_place_code || null);
+    setThird(prediction?.third_place_code || null);
+  }, [prediction]);
+
+  const handleSelect = (teamCode: string) => {
+    if (first === teamCode) setFirst(null);
+    else if (second === teamCode) setSecond(null);
+    else if (third === teamCode) setThird(null);
+    else if (!first) setFirst(teamCode);
+    else if (!second) setSecond(teamCode);
+    else if (!third) setThird(teamCode);
+  };
 
   const handleSave = async () => {
-    const h = parseInt(home, 10);
-    const a = parseInt(away, 10);
-    if (isNaN(h) || isNaN(a) || h < 0 || a < 0) return;
+    if (!first || !second) return;
     setLocalSaving(true);
-    await onSave(fixture.id, h, a);
+    await onSave(group.group, first, second, third);
     setLocalSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const kickoff = new Date(fixture.date);
-  const dateStr = format(kickoff, "EEE d MMM, HH:mm", { locale: es });
-  const hasPrediction = savedHome !== undefined && savedAway !== undefined;
+  const isComplete = first && second;
+  const hasChanged = first !== (prediction?.first_place_code || null) ||
+                     second !== (prediction?.second_place_code || null) ||
+                     third !== (prediction?.third_place_code || null);
+
+  const renderSlot = (label: string, code: string | null, num: number) => {
+    const team = group.standings.find(s => s.team.code === code)?.team;
+    return (
+      <div 
+        className="flex items-center gap-3 p-2 rounded-lg mb-2"
+        style={{ background: 'var(--bg-base)', border: '1px solid var(--bg-border)' }}
+      >
+        <span className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold" 
+              style={{ background: code ? 'var(--accent-gold-dim)' : 'transparent', color: code ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+          {num}°
+        </span>
+        {team ? (
+          <div className="flex items-center gap-2 flex-1">
+            <FlagImage code={getIsoCode(team.code)} teamName={team.name} size="sm" />
+            <span className="text-sm font-medium">{team.name}</span>
+          </div>
+        ) : (
+          <span className="text-sm text-[var(--text-muted)] flex-1">{label}</span>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div
-      className="card p-4 transition-all duration-200"
-      style={{
-        borderColor: isLive ? 'rgba(0,210,106,0.3)' : hasPrediction && !isLocked ? 'rgba(0,210,106,0.15)' : 'var(--bg-border)',
-      }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {match.league?.round ?? 'Grupo'}
-          </span>
-          {match.league?.group && (
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              · Grupo {match.league.group.replace('Group ', '')}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {isLocked && <LockIcon />}
-          {isLive && (
-            <span className="badge badge-live text-xs animate-pulse-live">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-green)]" />
-              {fixture.status.elapsed}'
-            </span>
-          )}
-          {isFinished && <span className="badge badge-finished text-xs">FT</span>}
-          {!isLocked && (
-            <span className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{dateStr}</span>
-          )}
-        </div>
+    <div className="card p-4 animate-fade-in" style={{ borderColor: isComplete ? 'rgba(46,204,113,0.2)' : 'var(--bg-border)' }}>
+      <h3 className="font-bebas text-xl tracking-[1px] mb-4">
+        {group.group.replace('Group ', 'GRUPO ')}
+      </h3>
+
+      <div className="mb-4">
+        {renderSlot('Elegir 1° puesto', first, 1)}
+        {renderSlot('Elegir 2° puesto', second, 2)}
+        {renderSlot('Elegir 3° puesto (Opcional)', third, 3)}
       </div>
 
-      {/* Teams + Inputs */}
-      <div className="flex items-center gap-2">
-        {/* Home */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FlagImage code={homeCode} teamName={teams.home.name} size="sm" />
-          <span className="text-sm font-semibold truncate">{teams.home.name}</span>
-        </div>
-
-        {/* Score inputs or result */}
-        <div className="flex items-center gap-2 shrink-0">
-          {isLocked ? (
-            <div className="flex items-center gap-2">
-              {/* User's prediction (faded) */}
-              {hasPrediction && (
-                <span
-                  className="text-sm tabular-nums px-2 rounded"
-                  style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}
-                >
-                  {savedHome}–{savedAway}
-                </span>
-              )}
-              {/* Actual result */}
-              {isFinished && (
-                <span className="text-lg font-bold tabular-nums px-2">
-                  {goals.home}–{goals.away}
-                </span>
-              )}
-              {isLive && (
-                <span
-                  className="text-lg font-bold tabular-nums px-2 animate-count-pulse"
-                  style={{ color: 'var(--accent-green)' }}
-                >
-                  {goals.home}–{goals.away}
-                </span>
-              )}
-              {!isFinished && !isLive && (
-                <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                  {format(kickoff, 'HH:mm')}
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                min={0}
-                max={99}
-                className="score-input"
-                value={home}
-                onChange={e => setHome(e.target.value)}
-                disabled={isLocked || localSaving || saving}
-                placeholder="–"
-              />
-              <span className="text-lg font-light" style={{ color: 'var(--text-muted)' }}>:</span>
-              <input
-                type="number"
-                min={0}
-                max={99}
-                className="score-input"
-                value={away}
-                onChange={e => setAway(e.target.value)}
-                disabled={isLocked || localSaving || saving}
-                placeholder="–"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Away */}
-        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-          <span className="text-sm font-semibold truncate text-right">{teams.away.name}</span>
-          <FlagImage code={awayCode} teamName={teams.away.name} size="sm" />
-        </div>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {group.standings.map(s => {
+          const isSelected = first === s.team.code || second === s.team.code || third === s.team.code;
+          return (
+            <button
+              key={s.team.id}
+              onClick={() => handleSelect(s.team.code)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              style={{
+                background: isSelected ? 'var(--accent-gold)' : 'var(--bg-base)',
+                color: isSelected ? '#000' : 'var(--text-primary)',
+                border: '1px solid',
+                borderColor: isSelected ? 'var(--accent-gold)' : 'var(--bg-border)',
+                opacity: isSelected ? 0.5 : 1
+              }}
+            >
+              <FlagImage code={getIsoCode(s.team.code)} teamName={s.team.name} size="sm" />
+              {s.team.name}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Save button */}
-      {!isLocked && (
-        <div className="flex justify-end mt-3">
-          <button
-            className="btn btn-primary text-xs py-1.5 px-4"
-            onClick={handleSave}
-            disabled={localSaving || saving || home === '' || away === ''}
-          >
-            {saved ? 'Guardado' : localSaving ? 'Guardando...' : hasPrediction ? 'Actualizar' : 'Guardar'}
-          </button>
-        </div>
-      )}
+      <button
+        className="btn w-full py-2 text-xs"
+        style={{
+          background: isComplete ? 'var(--accent-gold)' : 'var(--bg-base)',
+          color: isComplete ? '#000' : 'var(--text-muted)'
+        }}
+        onClick={handleSave}
+        disabled={!isComplete || localSaving || saving || (!hasChanged && !saved)}
+      >
+        {saved ? <><CheckCircle2 size={14} /> Guardado</> : localSaving ? 'Guardando...' : 'Guardar posiciones'}
+      </button>
     </div>
   );
 }
@@ -219,70 +160,50 @@ function ChampionPicker({ current, onSave, saving }: ChampionPickerProps) {
   const selectedTeam = WC2026_TEAMS.find(t => t.code === selected);
 
   return (
-    <div
-      className="card p-5"
-      style={{
-        borderColor: 'rgba(245,197,24,0.2)',
-        background: 'linear-gradient(135deg, #1a1a10 0%, var(--bg-card) 60%)',
-      }}
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.2)' }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c518" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="8"/>
-            <path d="M6 8H4a2 2 0 0 1-2-2V4h4"/><path d="M18 8h2a2 2 0 0 0 2-2V4h-4"/>
-            <rect x="6" y="4" width="12" height="8" rx="1"/>
-          </svg>
+    <div className="card p-6 md:p-8" style={{ borderColor: 'rgba(201,168,76,0.2)', background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(201,168,76,0.05) 100%)' }}>
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.2)' }}>
+          <Trophy size={24} color="var(--accent-gold)" />
         </div>
         <div>
-          <h3 className="font-bold">Campeon del Mundial</h3>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            +10 puntos si acertas al ganador
-          </p>
+          <h3 className="font-bebas text-2xl tracking-[1px] text-[var(--accent-gold)]">CAMPEÓN DEL MUNDIAL</h3>
+          <p className="text-xs mt-0.5 tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>+10 puntos si acertas al ganador</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
-        {selectedTeam && (
-          <FlagImage code={selectedTeam.code} teamName={selectedTeam.name} size="md" />
-        )}
-        <select
-          className="flex-1 rounded-xl px-3 py-2.5 text-sm font-medium appearance-none"
-          style={{
-            background: 'var(--bg-base)',
-            border: '2px solid var(--bg-border)',
-            color: 'var(--text-primary)',
-            outline: 'none',
-          }}
-          value={selected}
-          onChange={e => setSelected(e.target.value)}
-        >
-          <option value="">Selecciona un pais</option>
-          {WC2026_TEAMS.sort((a, b) => a.name.localeCompare(b.name)).map(t => (
-            <option key={t.code} value={t.code}>{t.name}</option>
-          ))}
-        </select>
+      <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+        <div className="w-full flex items-center gap-4">
+          {selectedTeam && (
+            <div className="shrink-0 w-10 h-10 rounded-full bg-[var(--bg-base)] border border-[var(--bg-border)] overflow-hidden flex items-center justify-center">
+              <FlagImage code={selectedTeam.code} teamName={selectedTeam.name} size="md" />
+            </div>
+          )}
+          <select
+            className="input flex-1 appearance-none text-sm font-medium cursor-pointer"
+            value={selected}
+            onChange={e => setSelected(e.target.value)}
+          >
+            <option value="">Selecciona un país</option>
+            {WC2026_TEAMS.sort((a, b) => a.name.localeCompare(b.name)).map(t => (
+              <option key={t.code} value={t.code}>{t.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {current && (
-        <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-          Prediccion actual:{' '}
-          <span className="font-semibold" style={{ color: 'var(--accent-gold)' }}>
-            {current.team_name}
-          </span>
+        <p className="text-[11px] uppercase tracking-[1px] mb-4" style={{ color: 'var(--text-muted)' }}>
+          Predicción actual: <span className="font-bold text-[var(--accent-gold)]">{current.team_name}</span>
         </p>
       )}
 
       <button
-        className="btn w-full"
+        className="btn w-full font-bold uppercase tracking-[1px]"
         style={{ background: 'var(--accent-gold)', color: '#000' }}
         onClick={handleSave}
         disabled={!selected || localSaving || saving}
       >
-        {saved ? 'Guardado' : localSaving ? 'Guardando...' : current ? 'Actualizar campeon' : 'Guardar campeon'}
+        {saved ? 'Guardado' : localSaving ? 'Guardando...' : current ? 'Actualizar campeón' : 'Guardar campeón'}
       </button>
     </div>
   );
@@ -293,18 +214,22 @@ function ChampionPicker({ current, onSave, saving }: ChampionPickerProps) {
 // ============================================================
 
 export default function Predictions() {
-  const [fixtures, setFixtures] = useState<Match[]>([]);
+  const [standings, setStandings] = useState<StandingGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeRound, setActiveRound] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'grupos' | 'bracket'>('grupos');
+  
+  const [userBracketPreds, setUserBracketPreds] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('mundialhub_bracket');
+    return saved ? JSON.parse(saved) : {};
+  });
 
-  const { predictions, championPrediction, saving, savePrediction, saveChampion, getPredictionForFixture } = usePredictions();
+  const { groupPredictions, championPrediction, saving, saveGroupPrediction, saveChampion, getGroupPrediction } = usePredictions();
 
   useEffect(() => {
-    getAllFixtures()
-      .then(all => {
-        const sorted = [...all].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
-        setFixtures(sorted);
+    getStandings()
+      .then(data => {
+        setStandings(data);
         setLoading(false);
       })
       .catch(err => {
@@ -313,118 +238,145 @@ export default function Predictions() {
       });
   }, []);
 
-  // Get unique rounds
-  const rounds = ['all', ...Array.from(new Set(fixtures.map(m => m.league?.round ?? 'Grupo'))).sort()];
+  const handleBracketPredict = (nodeId: string, winnerCode: string) => {
+    const updated = { ...userBracketPreds, [nodeId]: winnerCode };
+    setUserBracketPreds(updated);
+    localStorage.setItem('mundialhub_bracket', JSON.stringify(updated));
+  };
 
-  const filteredFixtures = activeRound === 'all'
-    ? fixtures
-    : fixtures.filter(m => (m.league?.round ?? 'Grupo') === activeRound);
+  const completedGroups = groupPredictions.filter(p => p.first_place_code && p.second_place_code).length;
 
-  const handleSave = useCallback(async (fixtureId: number, h: number, a: number) => {
-    const { error } = await savePrediction(fixtureId, h, a);
-    if (error) console.error('Error saving prediction:', error);
-  }, [savePrediction]);
-
-  const totalPredicted = predictions.length;
-  const totalLocked = fixtures.filter(m => new Date(m.fixture.date).getTime() <= Date.now()).length;
+  const bracketNodes = useMemo(() => {
+    if (loading || standings.length === 0) return {};
+    return generateBracketNodes(groupPredictions, standings, userBracketPreds);
+  }, [groupPredictions, standings, userBracketPreds, loading]);
 
   return (
-    <main className="page pb-24 md:pb-8">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black">Mis Predicciones</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Predeci los partidos antes del pitazo inicial
-        </p>
+    <main className="page max-w-none">
+      <div className="max-w-[900px] mx-auto mb-10">
+        <div className="flex items-center gap-3.5 mb-6">
+          <div className="w-11 h-11 bg-[var(--accent-gold-dim)] border border-[rgba(201,168,76,0.3)] rounded-xl flex items-center justify-center text-[var(--accent-gold)]">
+            <Edit3 size={22} />
+          </div>
+          <div>
+            <h1 className="font-bebas text-4xl tracking-[3px] text-[var(--text-primary)] leading-none">
+              MIS PREDICCIONES
+            </h1>
+            <div className="text-xs text-[var(--text-muted)] mt-1 tracking-[0.5px]">
+              Predecí el orden de los grupos y simulá la fase final
+            </div>
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        {!loading && standings.length > 0 && (
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="card p-4 text-center">
+              <p className="font-mono-score text-3xl font-black mb-1" style={{ color: 'var(--accent-gold)' }}>
+                {completedGroups} / {standings.length}
+              </p>
+              <p className="text-[10px] uppercase font-semibold tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                Grupos completados
+              </p>
+            </div>
+            <div className="card p-4 text-center">
+              <p className="font-mono-score text-3xl font-black mb-1" style={{ color: 'var(--text-primary)' }}>
+                {championPrediction ? 1 : 0} / 1
+              </p>
+              <p className="text-[10px] uppercase font-semibold tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                Campeón Elegido
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Selection */}
+        <div className="flex bg-[var(--bg-card)] border border-[var(--bg-border)] rounded-xl p-1.5 mb-8 max-w-[400px] mx-auto">
+          <button
+            onClick={() => setActiveTab('grupos')}
+            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all ${
+              activeTab === 'grupos' ? 'bg-[var(--accent-gold)] text-black' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            Fase de Grupos
+          </button>
+          <button
+            onClick={() => setActiveTab('bracket')}
+            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all ${
+              activeTab === 'bracket' ? 'bg-[var(--accent-gold)] text-black' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            Fase Final
+          </button>
+        </div>
+
+        {error && (
+          <div className="rounded-xl p-4 mb-6 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
+            Error: {error}
+          </div>
+        )}
       </div>
 
-      {/* Stats bar */}
-      {!loading && fixtures.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {[
-            { label: 'Predicciones', value: totalPredicted, color: 'var(--accent-green)' },
-            { label: 'Bloqueados', value: totalLocked, color: 'var(--accent-gold)' },
-            { label: 'Total', value: fixtures.length, color: 'var(--text-secondary)' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="card p-3 text-center">
-              <p className="text-xl font-black" style={{ color }}>{value}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      {activeTab === 'grupos' ? (
+        <div className="max-w-[1200px] mx-auto">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="card p-4 h-[300px]">
+                  <div className="skeleton h-6 w-32 rounded mb-4" />
+                  <div className="skeleton h-10 w-full rounded mb-2" />
+                  <div className="skeleton h-10 w-full rounded mb-2" />
+                  <div className="skeleton h-10 w-full rounded mb-4" />
+                  <div className="flex gap-2 mb-4">
+                    <div className="skeleton h-8 w-20 rounded-full" />
+                    <div className="skeleton h-8 w-20 rounded-full" />
+                  </div>
+                  <div className="skeleton h-10 w-full rounded mt-auto" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <div
-          className="rounded-xl p-4 mb-6 text-sm"
-          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
-        >
-          Error: {error}
-        </div>
-      )}
-
-      {/* Round filter */}
-      {!loading && rounds.length > 2 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
-          {rounds.map(r => (
-            <button
-              key={r}
-              onClick={() => setActiveRound(r)}
-              className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-              style={{
-                background: activeRound === r ? 'var(--accent-green)' : 'var(--bg-card)',
-                color: activeRound === r ? '#000' : 'var(--text-muted)',
-                border: activeRound === r ? 'none' : '1px solid var(--bg-border)',
-              }}
-            >
-              {r === 'all' ? 'Todos' : r}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Match list */}
-      {loading ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="card p-4">
-              <div className="skeleton h-4 w-32 rounded mb-3" />
-              <div className="flex items-center gap-4">
-                <div className="skeleton flex-1 h-8 rounded" />
-                <div className="skeleton w-24 h-10 rounded" />
-                <div className="skeleton flex-1 h-8 rounded" />
-              </div>
+          ) : standings.length === 0 ? (
+            <div className="card p-10 text-center">
+              <p className="font-bold">No hay grupos disponibles todavía</p>
             </div>
-          ))}
-        </div>
-      ) : filteredFixtures.length === 0 ? (
-        <div className="card p-10 text-center">
-          <p className="font-bold">No hay partidos en este filtro</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-12">
+              {standings.map(group => (
+                <GroupPredictionCard
+                  key={group.group}
+                  group={group}
+                  prediction={getGroupPrediction(group.group)}
+                  onSave={saveGroupPrediction}
+                  saving={saving}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ) : (
-        <div className="flex flex-col gap-3 mb-8">
-          {filteredFixtures.map(match => {
-            const pred = getPredictionForFixture(match.fixture.id);
-            return (
-              <PredictionRow
-                key={match.fixture.id}
-                match={match}
-                savedHome={pred?.home_score}
-                savedAway={pred?.away_score}
-                onSave={handleSave}
+        <div className="animate-fade-in w-full">
+          <div className="max-w-[900px] mx-auto mb-4 text-center">
+            <h2 className="font-bebas text-3xl tracking-[1px] text-[var(--accent-gold)]">SIMULADOR DE LLAVES</h2>
+            <p className="text-sm text-[var(--text-muted)] mt-1">Los equipos se autocompletan basados en tus predicciones de fase de grupos.</p>
+          </div>
+          {loading ? (
+            <div className="max-w-[900px] mx-auto card p-10 flex justify-center">
+              <div className="skeleton w-full h-[400px] rounded-xl" />
+            </div>
+          ) : (
+            <Bracket nodes={bracketNodes} onPredict={handleBracketPredict} />
+          )}
+
+          {!loading && (
+            <div className="max-w-[900px] mx-auto mt-16 mb-12">
+              <ChampionPicker
+                current={championPrediction}
+                onSave={saveChampion}
                 saving={saving}
               />
-            );
-          })}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Champion Picker */}
-      {!loading && (
-        <ChampionPicker
-          current={championPrediction}
-          onSave={saveChampion}
-          saving={saving}
-        />
       )}
     </main>
   );
